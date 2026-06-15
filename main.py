@@ -1,4 +1,4 @@
-from fastapi import FastAPI 
+from fastapi import FastAPI , status , HTTPException
 from pydantic import BaseModel
 app = FastAPI()
 
@@ -11,7 +11,7 @@ app = FastAPI()
 #dynamic routes
 
 @app.get("/items/{item_id}")
-def items(item_id):
+def items(item_id: int):
     return {"itemm_id": item_id}
 
 users=[]
@@ -58,3 +58,31 @@ def get_user():
 
 #status code and responses
 
+@app.post("/create_userr", status_code=status.HTTP_201_CREATED)
+def create_userr():
+    return{
+        "message":"User Created"
+    }
+    
+    
+    
+#custom_response
+@app.get("/userr")
+def get_custom_userr():
+    return {"message": "This is a custom user response",
+            "status": "Success", 
+            "data":{
+                "name":"sam"
+            }
+        }
+
+
+
+
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    if user_id != 1:
+        raise HTTPException(status_code=404, detail="user not found")
+    return {"user_id": 1, "name": "sam"}
+
+ 
