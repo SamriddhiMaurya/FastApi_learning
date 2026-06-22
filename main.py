@@ -1,60 +1,59 @@
-from fastapi import FastAPI 
-from pydantic import BaseModel
+from fastapi import FastAPI , Depends, Header  , HTTPException  #header for auth
 app = FastAPI()
 
-# @app.get("/")
-# def home():
-#     return {"message": "Hello World"}
 
 
 
-#dynamic routes
+#dependency injection 
+#commom logic
 
-@app.get("/items/{item_id}")
-def items(item_id):
-    return {"itemm_id": item_id}
-
-users=[]
-#pydantic models
-class User(BaseModel):
-    name: str
-    age: int
-    email: str
- 
- 
-    
-@app.post("/create_users")
-def create_user(user: User):
-    users.append(user)
-    return {"message": "User created successfully!", "data": user}
-
-@app.get("/get_users")
-def get_users():
-    return {"message": "List of users", "data": users}
+def common_logic():
+    return{
+        "message":"common logic executed"
+    } 
 
 
-class Userr(BaseModel):
-    name: str
-    age: int
-    passkey: int
+@app.get("/home")
+def homee(data=Depends(common_logic)):
+    return data
 
 
-#response model
+#reusable logic of dependency injection 
 
-class UserResponse(BaseModel):
-    name: str
-    age: int
-    
-@app.get("/new_user", response_model=UserResponse)
-def get_user():
-    return {
-        "name": "John Doe",
-        "age": 30,      
-        "passkey": 12345
+def get_current_user():
+    return{
+        "user": "Sam"
     }
     
+@app.get("/profile")
+def profile(user = Depends(get_current_user)):
+    return user 
+
+@app.get("/dashboard")
+def dashboard(user = Depends(get_current_user)):
+    return user 
 
 
 
-#status code and responses
+#Auth
 
+
+def verify_token(token: str = Header(None)):
+    if token != "mysecrettoken":
+        raise HTTPException(
+            status_code=401,
+            detail="unauthorized"
+        )
+    return {
+        "user": "Authorized User"
+    }
+    
+@app.get("/secure-data")
+def secure_data(user=Depends(verify_token)):
+    return {
+        "message": "secure data accessed",
+        "user": user
+    }
+    
+    
+    
