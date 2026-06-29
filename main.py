@@ -1,5 +1,5 @@
 import sqlite3
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy import Column, Integer, String
@@ -64,9 +64,75 @@ def get_db():
     finally:
         db.close()
         
-@app.get("/")
-def home(db:Session = Depends(get_db)):
+
+
+#create API
+@app.post("/todos")
+def create_todo(title:str , db:Session = Depends(get_db)):
+    todo = Todo(title=title, completed="False")
+    db.add(todo) #adding to db
+    db.commit() #saving to db
+    db.refresh(todo) #refreshing the db
     return{
-        "message":"DB connected file"
+        "message":"Todo Created" , 
+        "data":todo
     }
+    
+    
+#READ ALL DATA
+
+@app.get("/todos")
+def get_todos(db:Session=Depends(get_db)):
+    todos=db.query(Todo).all()
+    
+    return{
+        "Total":len(todos), 
+        "data": todos
+    }
+    
+    
+@app.get("/todos/{todo_id}")
+def get_todo(todo_id = int , db : Session=Depends(get_db)):
+    todo = db.query(Todo).filter(Todo.id == todo_id).first()
+    
+    if not todo:
+        raise HTTPException(status_code = 404, deatail="Todo not found")
+    return todo
+
+
+#Update Data in DB
+
+@app.put("/todos/{todo_id}")
+def update_todo(todo_id:int , title:str , db: Session = Depends(get_db)):
+    todo = db.query(Todo).filter(Todo.id ==  todo_id).first()
+    
+    if not todo:
+        raise HTTPException(status_code = 404, deatail="Todo not found")
+    
+    
+    todo.title = title 
+    
+    db.commit()
+    db.refresh(todo)
+    
+    return {
+        "message": "todo title updates", 
+        "data":todo
+    }
+    
+    
+    #delete operation
+    
+
+@app.delete("/todos/{todo_id}")
+def delete_todo(todo_id:int , db:Session=Depends(get_db)):
+    todo= db.query(Todo).filter(Todo.id == todo_id).first()
+    
+    if not todo:
+        raise HTTPException(status_code = 404, deatail="Todo not found")
+    
+    db.delete(todo)
+    db.commit()
+    
+    return{"message":"deleted"}
 
