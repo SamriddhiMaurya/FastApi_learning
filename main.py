@@ -1,60 +1,63 @@
-from fastapi import FastAPI 
-from pydantic import BaseModel
-app = FastAPI()
-
-# @app.get("/")
-# def home():
-#     return {"message": "Hello World"}
+from fastapi import FastAPI , HTTPException, Depends , Header
+from jose import jwt
+from datetime import datetime, timedelta, timezone
 
 
+app=FastAPI()
 
-#dynamic routes
+SECRET_KEY = "mysecret"
 
-@app.get("/items/{item_id}")
-def items(item_id):
-    return {"itemm_id": item_id}
+ALGORITHM = "HS256"
 
-users=[]
-#pydantic models
-class User(BaseModel):
-    name: str
-    age: int
-    email: str
- 
- 
+#create token 
+def create_token(data:dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+    to_encode.update({
+        "exp":expire
+    })
+    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     
-@app.post("/create_users")
-def create_user(user: User):
-    users.append(user)
-    return {"message": "User created successfully!", "data": user}
-
-@app.get("/get_users")
-def get_users():
-    return {"message": "List of users", "data": users}
-
-
-class Userr(BaseModel):
-    name: str
-    age: int
-    passkey: int
-
-
-#response model
-
-class UserResponse(BaseModel):
-    name: str
-    age: int
     
-@app.get("/new_user", response_model=UserResponse)
-def get_user():
-    return {
-        "name": "John Doe",
-        "age": 30,      
-        "passkey": 12345
+    return token
+
+
+#login API(Token Generation)
+@app.post("/login")
+def login(usernname:str, password:str):
+    if usernname != "admin" or password != "1234":
+        raise HTTPException(
+            status_code=401, 
+            datail  = "Invalid Username and password"
+        )
+    token = create_token({
+        "sub":usernname
+    })
+    return{
+        "access_token":token
     }
     
+    
+#token verify
 
+def verify_token(token: str = Header(None)):
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except:
+        raise HTTPException(
+            status_code=401,
+            detail="invalid token"
+        )
+        
+        
+        
+#protected route
 
-
-#status code and responses
-
+@app.get("/secure")
+def secure_data(user = Depends(verify_token)):
+    return{
+        "mesaage": "Secure data accessed", 
+        "user":user
+    }
